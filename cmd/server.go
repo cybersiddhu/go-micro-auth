@@ -9,16 +9,18 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 
 	"github.com/cybersiddhu/go-micro-auth/service"
-
 	"gopkg.in/codegangsta/cli.v0"
+	"gopkg.in/jmoiron/sqlx.v0"
 	"gopkg.in/yaml.v1"
 )
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "mauth"
+	app.Name = "microauth"
 	app.Usage = "App to work with HTTP authentication mircoservice"
 	app.Version = "1.0.0"
 	app.Flags = []cli.Flag{
@@ -40,12 +42,51 @@ func main() {
 			},
 		},
 		{
-			Name:   "genkey",
+			Name:   "generate-key",
 			Usage:  "Generate private key file",
 			Action: genPrivateKeyFile,
 		},
+		{
+			Name:   "create-table",
+			Usage:  "Create user table in the database",
+			Action: createUserTable,
+		},
 	}
 	app.Run(os.Args)
+}
+
+func createUserTable(c *cli.Context) {
+	conf, err := readConfig(c)
+	if err != nil {
+		log.Fatal(err)
+	}
+	// figure out the schema file
+	parentDir, _ := filepath.Split(currSrcDir())
+	schema := filepath.Join(parentDir, "db", "user_"+conf.DbDriver+".sql")
+	ct, err := ioutil.ReadFile(schema)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//connect to database
+	dbh, err := sqlx.Connect(conf.DbDriver, conf.DbSource)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//load the schema
+	tx := dbh.MustBegin()
+	_ = tx.MustExec(string(ct))
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func currSrcDir() string {
+	_, filename, _, ok := runtime.Caller(1)
+	if !ok {
+		log.Fatal("unable to retreive current src file path")
+	}
+	return filepath.Dir(filename)
 }
 
 // Generate a 2048 bit RSA private key and write to the file given
