@@ -1,0 +1,12 @@
+host: localhost
+
+# currently sqlite3 and postgres is supported 
+driver: sqlite3
+
+# For sqlite3 user either :memory: or path to a file
+# For postgres 
+#  "user=user password=pass dbname=database host=localhost port=port sslmode=disable"
+datasource: "db.sqlite3"
+
+# Give full path
+keyfile: "rsa.pem"
