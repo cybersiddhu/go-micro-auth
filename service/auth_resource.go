@@ -13,7 +13,7 @@ import (
 
 const (
 	userCheckStmt = `
-	SELECT users.* FROM users where email = ?
+	SELECT users.email, users.password FROM users where email = ?
 	`
 	userInsertStmt = `
 	INSERT INTO users(email, password) VALUES(?, ?)
@@ -30,6 +30,7 @@ func (ar *AuthResource) CreateSession(c *gin.Context) {
 	// validate input by binding to an expected json structure
 	if !c.Bind(&ju) {
 		c.JSON(400, gin.H{"message": "malformed json"})
+		return
 	}
 
 	// check if the email matches
@@ -39,14 +40,16 @@ func (ar *AuthResource) CreateSession(c *gin.Context) {
 		if err == sql.ErrNoRows {
 			c.JSON(400, gin.H{"message": fmt.Sprintf("email %s not found", ju.Email)})
 		} else {
-			c.JSON(401, gin.H{"message": err})
+			c.JSON(401, gin.H{"message": fmt.Sprintf("database errors %s", err)})
 		}
+		return
 	}
 
 	// check if password matches
 	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(ju.Password))
 	if err != nil {
 		c.JSON(401, gin.H{"message": "password do not match"})
+		return
 	}
 
 	// generate a json web token
@@ -56,6 +59,7 @@ func (ar *AuthResource) CreateSession(c *gin.Context) {
 	tokenString, err := token.SignedString(ar.PrvKey)
 	if err != nil {
 		c.JSON(400, gin.H{"message": err})
+		return
 	}
 	// successful response
 	c.JSON(201, gin.H{"token": tokenString})
@@ -66,14 +70,17 @@ func (ar *AuthResource) CreateUser(c *gin.Context) {
 	// validate input by binding to an expected json structure
 	if !c.Bind(&ju) {
 		c.JSON(400, gin.H{"message": "malformed json"})
+		return
 	}
 	epass, err := bcrypt.GenerateFromPassword([]byte(ju.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(400, gin.H{"message": err})
+		c.JSON(400, gin.H{"message": fmt.Sprint(err)})
+		return
 	}
 	_, err = ar.Dbh.Exec(userInsertStmt, ju.Email, epass)
 	if err != nil {
-		c.JSON(400, gin.H{"message": err})
+		c.JSON(400, gin.H{"message": fmt.Sprint(err)})
+		return
 	}
 	c.JSON(200, gin.H{"message": fmt.Sprintf("user with email %s created", ju.Email)})
 }
