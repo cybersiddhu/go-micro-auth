@@ -5,6 +5,8 @@ import (
 
 	"gopkg.in/gin-gonic/gin.v0"
 	"gopkg.in/jmoiron/sqlx.v0"
+	_ "gopkg.in/lib/pq.v0"
+	_ "gopkg.in/mattn/go-sqlite3.v0"
 )
 
 type Config struct {
@@ -18,7 +20,7 @@ type AuthService struct{}
 
 func (s *AuthService) Run(conf Config) error {
 	// database connection
-	dbh, err := sqlx.Connect(conf.DbDriver, conf.DbSource)
+	dbh, err := GetDBHandler(conf)
 	if err != nil {
 		return err
 	}
@@ -37,4 +39,9 @@ func (s *AuthService) Run(conf Config) error {
 	auth.POST("/signup", resource.CreateUser)
 	r.Run(conf.ServiceHost)
 	return nil
+}
+
+func GetDBHandler(conf Config) (*sqlx.DB, error) {
+	dbh, err := sqlx.Connect(conf.DbDriver, conf.DbSource)
+	return dbh, err
 }

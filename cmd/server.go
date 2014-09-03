@@ -14,7 +14,6 @@ import (
 
 	"github.com/cybersiddhu/go-micro-auth/service"
 	"gopkg.in/codegangsta/cli.v0"
-	"gopkg.in/jmoiron/sqlx.v0"
 	"gopkg.in/yaml.v1"
 )
 
@@ -68,9 +67,9 @@ func createUserTable(c *cli.Context) {
 		log.Fatal(err)
 	}
 	//connect to database
-	dbh, err := sqlx.Connect(conf.DbDriver, conf.DbSource)
+	dbh, err := service.GetDBHandler(conf)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("unable to connect to database with error %s\n", err)
 	}
 	//load the schema
 	tx := dbh.MustBegin()
