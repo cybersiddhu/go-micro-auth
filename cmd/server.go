@@ -8,6 +8,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -27,18 +28,9 @@ func main() {
 	}
 	app.Commands = []cli.Command{
 		{
-			Name:  "server",
-			Usage: "Run the HTTP server",
-			Action: func(c *cli.Context) {
-				config, err := readConfig(c)
-				if err != nil {
-					log.Fatal(err)
-				}
-				svc := &service.AuthService{}
-				if err = svc.Run(config); err != nil {
-					log.Fatal(err)
-				}
-			},
+			Name:   "server",
+			Usage:  "Run the HTTP server",
+			Action: runServer,
 		},
 		{
 			Name:   "generate-key",
@@ -52,6 +44,19 @@ func main() {
 		},
 	}
 	app.Run(os.Args)
+}
+
+func runServer(c *cli.Context) {
+	config, err := readConfig(c)
+	if err != nil {
+		log.Fatal(err)
+	}
+	svc := &service.AuthService{}
+	handler, err := svc.GetHttpHandler(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+	http.ListenAndServe(config.ServiceHost, handler)
 }
 
 func createUserTable(c *cli.Context) {

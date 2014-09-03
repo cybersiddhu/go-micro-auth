@@ -2,6 +2,7 @@ package service
 
 import (
 	"io/ioutil"
+	"net/http"
 
 	"gopkg.in/gin-gonic/gin.v0"
 	"gopkg.in/jmoiron/sqlx.v0"
@@ -18,17 +19,17 @@ type Config struct {
 
 type AuthService struct{}
 
-func (s *AuthService) Run(conf Config) error {
+func (s *AuthService) GetHttpHandler(conf Config) (http.Handler, error) {
 	// database connection
 	dbh, err := GetDBHandler(conf)
 	if err != nil {
-		return err
+		return gin.New(), err
 	}
 
 	// reading the private key
 	keyData, err := ioutil.ReadFile(conf.KeyFile)
 	if err != nil {
-		return err
+		return gin.New(), err
 	}
 
 	// setup resource
@@ -37,8 +38,7 @@ func (s *AuthService) Run(conf Config) error {
 	auth := r.Group("/auth")
 	auth.POST("/login", resource.CreateSession)
 	auth.POST("/signup", resource.CreateUser)
-	r.Run(conf.ServiceHost)
-	return nil
+	return r, nil
 }
 
 func GetDBHandler(conf Config) (*sqlx.DB, error) {
